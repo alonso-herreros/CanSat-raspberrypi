@@ -1,4 +1,3 @@
-#Photoshoot and recording program for CanSat
 #Importing libraries
 import time
 from bmp280 import BMP280
