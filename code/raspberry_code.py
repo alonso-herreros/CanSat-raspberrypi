@@ -1,4 +1,3 @@
-#Sublime text test 1
 #Importing libraries
 import time
 from bmp280 import BMP280
