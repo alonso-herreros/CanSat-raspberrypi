@@ -15,7 +15,22 @@ def logger(tmp_file):
 
 
 def test_init_properties(tmp_file):
-    """ Test that the logger is initialized properly and that properties can be accessed """
+    """ Test that the logger is initialized """
+    logger = DataLogger(tmp_file)
+
+    assert logger.file_name == tmp_file
+
+
+def test_init_headers(tmp_file):
+    """ Test that the logger is initialized and headers logged """
+    logger = DataLogger(tmp_file, test_headers)
+    assert logger.headers == test_headers
+
+
+def test_init_new_dir(tmp_path):
+    """ Test that a new directory is created if it doesn't exist """
+    tmp_file = tmp_path / 'tmp_dir' / 'tmp_log.csv'
+
     logger = DataLogger(tmp_file, test_headers)
 
     assert logger.file_name == tmp_file
