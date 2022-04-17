@@ -23,7 +23,7 @@ def serial(port):
 
 @pytest.fixture
 def lines(serial):
-    return [nextline(serial) for _ in range(15)]
+    return [nextline(serial) for _ in range(13)]
 
 @pytest.fixture
 def msgs(lines):
@@ -37,6 +37,7 @@ def test_serial_port(port):
     """ Test that the serial port can be opened """
     with Serial(port, BAUD) as serial:
         assert serial.is_open
+    if serial.is_open: serial.close()
 
 
 def test_receiving_data(serial):
