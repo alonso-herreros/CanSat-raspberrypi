@@ -12,10 +12,9 @@ class DataLogger:
         self._file.parent.mkdir(parents=True, exist_ok=True)
         self._file.touch()
 
-        if headers:
-            with self._file.open('w', newline='') as file:
-                writer = csv.writer(file, delimiter=',')
-                writer.writerow(headers)
+        with self._file.open('w', newline='') as file:
+            writer = csv.writer(file, delimiter=',')
+            writer.writerow(headers)
 
 
     @property
