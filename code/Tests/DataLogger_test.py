@@ -1,40 +1,84 @@
 from Logging.DataLogger import DataLogger
+from pathlib import Path as P
 import csv
 import pytest
 
 
-test_headers = ['timestamp', 'value']
+@pytest.fixture(params=['tmp_log.csv', 'tmp log.csv', 'a.csv', 'a', 'a/'])
+def tmp_files(tmp_path, request):
+    return tmp_path / request.param
 
 @pytest.fixture
 def tmp_file(tmp_path):
     return tmp_path / 'tmp_log.csv'
 
+@pytest.fixture(params=[P('inner') / 'tmp.csv', P('in1') / 'in2' / 'tmp_log.csv'])
+def tmp_files_inner(tmp_path, request):
+    return tmp_path / request.param
+
 @pytest.fixture
-def logger(tmp_file):
-    return DataLogger(tmp_file, test_headers)
+def headers_def():
+    return DataLogger.DEF_HEADERS
+
+@pytest.fixture(params=[
+    ['Time', 'Data'],
+    ['Time', 'Latitude', 'Longitude', 'Altitude'],
+    ['Account', 'Balance'],
+    ['English', 'Spanish', 'Math', 'Physics', 'Chemistry', 'History'],
+])
+def headers(request):
+    return request.param
+
+@pytest.fixture
+def logger_def(tmp_file):
+    return DataLogger(tmp_file)
+
+@pytest.fixture
+def logger(tmp_file, headers):
+    return DataLogger(tmp_file, headers)
 
 
-def test_init_properties(tmp_file):
+def test_init(tmp_file):
     """ Test that the logger is initialized """
-    logger = DataLogger(tmp_file)
-
-    assert logger.file_name == tmp_file
+    assert DataLogger(tmp_file), 'Logger not initialized'
 
 
-def test_init_headers(tmp_file):
-    """ Test that the logger is initialized and headers logged """
-    logger = DataLogger(tmp_file, test_headers)
-    assert logger.headers == test_headers
+def test_file_property(tmp_files):
+    """ Test that the file property is set correctly """
+    logger = DataLogger(tmp_files)
+    assert logger.file == tmp_files
 
 
-def test_init_new_dir(tmp_path):
+def test_def_properties(logger_def, headers_def):
+    """ Test that the default properties are set correctly """
+    assert logger_def.headers == headers_def
+    assert logger_def.columns == len(headers_def)
+
+
+def test_set_properties(logger, headers):
+    """ Test that the properties can be set at initialization """
+    assert logger.headers == headers
+    assert logger.columns == len(headers)
+
+
+def test_new_file(tmp_files):
+    """ Test that the logger can create a new file """
+    if tmp_files.exists(): tmp_files.unlink()
+    logger_def = DataLogger(tmp_files)
+    assert logger_def.file.is_file()
+
+
+def test_existing_file(tmp_files):
+    """ Test that the logger can read an existing file """
+    tmp_files.touch()
+    logger = DataLogger(tmp_files)
+    assert logger.file.is_file()
+
+
+def test_new_dir(tmp_files_inner, headers):
     """ Test that a new directory is created if it doesn't exist """
-    tmp_file = tmp_path / 'tmp_dir' / 'tmp_log.csv'
-
-    logger = DataLogger(tmp_file, test_headers)
-
-    assert logger.file_name == tmp_file
-    assert logger.headers == test_headers
+    logger = DataLogger(tmp_files_inner, headers)
+    assert logger.file.is_file()
 
 
 def test_log_data(logger):
@@ -52,4 +96,4 @@ def test_log_data(logger):
 
 
 if __name__ == '__main__':
-    test_init_properties()
+    pass
