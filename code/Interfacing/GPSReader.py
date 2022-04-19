@@ -1,53 +1,68 @@
-from serial import Serial
-from pathlib import Path
+from serial import Serial, serialutil
 from Logging.GPSLogger import GPSLogger
 import pynmea2
 import sys
-import os
 
 
 class GPSReader:
     DEF_PORTS = {'win32': 'COM5', 'linux': '/dev/ttyACM0'}
-    DEF_ENDER = 'GLL'
+    DEF_BAUD = 9600
+    DEF_TIMEOUT = 1.2
 
 
-    def __init__(self, port=None, log=True):
-        self._port = port or self.DEF_PORTS[sys.platform]
-        self._ser = Serial(port, 9600, timeout=1.2)
+    def __init__(self, file=None, headers=None, port=None, baud=None, timeout=None):
+        try:
+            self._ser = Serial(
+                port=port or GPSReader.DEF_PORTS[sys.platform],
+                baudrate=baud or GPSReader.DEF_BAUD,
+                timeout=timeout or GPSReader.DEF_TIMEOUT
+            )
+        except serialutil.SerialException:
+            self._ser = None
 
-        match log:
-            case True:
-                log_file = Path(__file__).parent.parent / 'datalogs' / 'gps_def.csv'
-            case rel if rel.startswith('.'):
-                log_file = Path(__file__).parent.parent / rel
-            case abs:
-                log_file = Path(abs)
-
-        self._logger = GPSLogger(log_file) if log else None
+        self._logger = GPSLogger(file, headers) if file else None
 
 
-    def __del__(self):
-        self._ser.close()
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.close()
 
 
     @property
     def port(self):
-        return self._port
+        return self._ser.port if self._ser else None
 
     @property
-    def has_logger(self):
-        return self._logger != None
+    def ser_satus(self):
+        return (True if self._ser.is_open else False) if self._ser else None
 
     @property
     def log_file(self):
-        return self._logger.file_name
+        return self._logger.file_name if self._logger else None
+
+    @property
+    def headers(self):
+        return self._logger.headers if self._logger else None
+
+    @property
+    def has_logger(self):
+        return True if self._logger else False
 
 
-    def read(self, noLog=False):
+    def close(self):
+        if self._ser: self._ser.close()
+
+
+    def readline(self, log=False):
+        if not self._ser:
+            raise AttributeError('Serial is not set. Maybe it failed to open.')
+
         line = self._ser.readline().decode().rstrip('\r\n')
         data = pynmea2.parse(line, check=True)
 
-        if not noLog and self.has_logger:
+        if log and self.has_logger:
             self._logger.log_sentence(data)
 
         return data
