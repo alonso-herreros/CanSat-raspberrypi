@@ -1,5 +1,4 @@
 bmp280==0.0.4
-matplotlib==3.5.1
 picamera==1.13
 pynmea2==1.18.0
 pyserial==3.5
