@@ -40,7 +40,7 @@ class GPSReader:
 
     @property
     def log_file(self):
-        return self._logger.file_name if self._logger else None
+        return self._logger.file if self._logger else None
 
     @property
     def headers(self):
@@ -63,6 +63,6 @@ class GPSReader:
         data = pynmea2.parse(line, check=True)
 
         if log and self.has_logger:
-            self._logger.log_sentence(data)
-
-        return data
+            return self._logger.log_sentence(data)
+        else:
+            return data
