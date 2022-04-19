@@ -2,17 +2,17 @@ from .DataLogger import DataLogger
 
 
 class GPSLogger(DataLogger):
-    _HEADERS = ['Time', 'Latitude', 'Longitude', 'Altitude']
+    HEADERS = ['Time', 'Latitude', 'Longitude', 'Altitude']
 
 
-    def __init__(self, file_name):
-        super().__init__(file_name, self._HEADERS)
+    def __init__(self, file_name, headers=None):
+        super().__init__(file_name, headers or GPSLogger.HEADERS)
 
     
     def log_sentence(self, sen):
-        try:
-            data = [sen.timestamp, sen.lat, sen.lon, sen.altitude]
+        if sen.sentence_type == 'GGA' or sen.sentence_type == 'GLL':
+            data = [sen.timestamp, sen.lat, sen.lon, getattr(sen, 'altitude', None)]
             self.log_data(data)
             return data
-        except AttributeError:
-            raise AttributeError('Sentence does not have the required attributes')
+        else:
+            return None
