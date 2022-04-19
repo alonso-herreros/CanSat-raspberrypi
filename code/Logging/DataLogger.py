@@ -1,45 +1,43 @@
 import csv
+from pathlib import Path
 
 
 class DataLogger:
-    def __init__(self, file_name, headers=[]):
-        self._file_name = file_name
-        self._columns = len(headers)
-        
-        try:
-            with open(self._file_name, 'w', newline='') as file:
-                writer = csv.writer(file, delimiter=',')
-                writer.writerow(headers)
-        except IOError as e:
-            print(f"IOError: {e}")
+    DEF_HEADERS = ['Data']
+
+    def __init__(self, file, headers=None):
+        self._file = Path(file).resolve()
+        self._headers = headers or DataLogger.DEF_HEADERS
+
+        self._file.parent.mkdir(parents=True, exist_ok=True)
+        self._file.touch()
+
+        with self._file.open('w', newline='') as file:
+            writer = csv.writer(file, delimiter=',')
+            writer.writerow(headers)
 
 
     @property
     def columns(self):
-        return self._columns
+        return len(self._headers)
 
     @property
-    def file_name(self):
-        return self._file_name
+    def file(self):
+        return self._file
 
     @property
     def headers(self):
-        try:
-            with open(self._file_name, 'r') as file:
-                reader = csv.reader(file, delimiter=',')
-                headers = next(reader)
-            return headers
-        except IOError as e:
-            print(f"IOError: {e}")
-            return None
+        return self._headers
 
 
-    def log_data(self, data):
-        try:
-            with open(self._file_name, 'a', newline='') as file:
-                writer = csv.writer(file, delimiter=',')
-                writer.writerow(data)
-            return data
-        except IOError as e:
-            print(f"IOError: {e}")
-            return None
+    def log(self, *args):
+        data = [args] if len(args) == 1 else args
+
+        with open(self._file, 'a', newline='') as file:
+            writer = csv.writer(file, delimiter=',')
+            for entry in data:
+                if len(entry) == len(self._headers): 
+                    writer.writerow(entry)
+                else:
+                    raise ValueError('Data length does not match headers length')
+        return data
