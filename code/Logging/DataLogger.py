@@ -29,15 +29,14 @@ class DataLogger:
     def headers(self):
         return self._headers
 
-
-    def log(self, *args):
-        data = [args] if len(args) == 1 else args
+    #TODO: Implement alternative by getting data as kwargs with column aliases
+    def log(self, *entries):
 
         with open(self._file, 'a', newline='') as file:
             writer = csv.writer(file, delimiter=',')
-            for entry in data:
+            for entry in entries:
                 if len(entry) == len(self._headers): 
                     writer.writerow(entry)
                 else:
                     raise ValueError('Data length does not match headers length')
-        return data
+        return entries
