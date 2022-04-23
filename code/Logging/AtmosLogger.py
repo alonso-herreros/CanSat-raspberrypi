@@ -2,17 +2,21 @@ from .DataLogger import DataLogger
 
 
 class AtmosLogger(DataLogger):
-    HEADERS = ['Time', 'Pressure', 'Temperature', 'Humidity']
+    HEADERS = ['Time', 'Pressure (Bar)', 'Temperature (C)', 'Humidity (%)']
 
 
     def __init__(self, file_name, headers=None):
         super().__init__(file_name, headers or AtmosLogger.HEADERS)
 
 
-    #TODO: Implement this
-    def log_mda(self, sen):
+    def log_mda(self, sen, time=None):
         """ Takes a sentence and an optional timestamp and logs it."""
-        pass
+        try:
+            data = [time, sen.b_pressure_bar, sen.air_temp, sen.humidity]
+            self.log(data)
+            return data
+        except AttributeError:
+            return None
 
     #TODO: Implement alternative to log_mda by getting data as arguments somehow
     #def log_mda(self, *args, **kwargs):
