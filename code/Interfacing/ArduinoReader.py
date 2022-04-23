@@ -3,9 +3,8 @@ from pathlib import Path
 from time import sleep
 import pynmea2
 import sys
-#TODO: Uncomment when GPSLogger and AtmosLogger are implemented
-#from Logging.GPSLogger import GPSLogger 
-#from Logging.AtmosLogger import AtmosLogger
+from Logging.GPSLogger import GPSLogger 
+from Logging.AtmosLogger import AtmosLogger
 
 
 class ArduinoReader:
@@ -25,9 +24,8 @@ class ArduinoReader:
             self._ser = None
 
         dir = Path(__file__).parent / 'arduino_log' if dir == True else dir
-        #TODO: Switch False for dir when Loggers are implemented
-        self._gps_logger = GPSLogger(dir / 'gps.csv') if False else None
-        self._atmos_logger = AtmosLogger(dir / 'atmos.csv') if False else None
+        self._gps_logger = GPSLogger(dir / 'gps.csv') if dir else None
+        self._atmos_logger = AtmosLogger(dir / 'atmos.csv') if dir else None
 
 
     def __enter__(self):
@@ -50,7 +48,14 @@ class ArduinoReader:
         return self._gps_logger.file.parent if self._gps_logger else None
 
     @property
-    def has_loggers(self):
+    def log_file_gps(self):
+        return self._gps_logger.file if self._gps_logger else None
+    @property
+    def log_file_atmos(self):
+        return self._atmos_logger.file if self._atmos_logger else None
+
+    @property
+    def has_logger(self):
         return True if self._gps_logger and self._atmos_logger else False
 
 
@@ -62,16 +67,15 @@ class ArduinoReader:
         if not self._ser:
             raise AttributeError('Serial is not set. Maybe it failed to open.')
 
-        line = self._ser.readline().decode().rstrip('\r\n')
-        if line == "": return line
-        data = pynmea2.parse(line)
+        line = self._ser.readline().decode()
+        if not line.startswith('$'): return ''
+        sen = pynmea2.parse(line)
 
         if log and self.has_logger:
-            if data.sentence_type == 'MDA':
-                return self._atmos_logger.log_sentence(data)
-            elif data.sentence_type == 'GGA':
-                return self._gps_logger.log_sentence(data)
-        else:
-            return data
+            if sen.sentence_type == 'MDA':
+                self._atmos_logger.log_sentence(sen)
+            elif sen.sentence_type == 'GGA':
+                self._gps_logger.log_sentence(sen)
+        return sen
 
 
