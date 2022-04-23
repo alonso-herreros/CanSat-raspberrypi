@@ -14,7 +14,7 @@ class DataLogger:
 
         with self._file.open('w', newline='') as file:
             writer = csv.writer(file, delimiter=',')
-            writer.writerow(headers)
+            writer.writerow(self._headers)
 
 
     @property
