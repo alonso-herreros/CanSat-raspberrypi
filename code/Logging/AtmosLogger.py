@@ -9,10 +9,10 @@ class AtmosLogger(DataLogger):
         super().__init__(file_name, headers or AtmosLogger.HEADERS)
 
 
-    def log_mda(self, sen, time=None):
+    def log_sentence(self, sen, time=None):
         """ Takes a sentence and an optional timestamp and logs it."""
         try:
-            data = [time, sen.b_pressure_bar, sen.air_temp, sen.humidity]
+            data = [time, sen.b_pressure_bar, sen.air_temp, sen.rel_humidity]
             self.log(data)
             return data
         except AttributeError:
