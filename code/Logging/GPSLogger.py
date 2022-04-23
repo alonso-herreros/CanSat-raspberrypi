@@ -10,9 +10,9 @@ class GPSLogger(DataLogger):
 
     
     def log_sentence(self, sen):
-        if sen.sentence_type == 'GGA' or sen.sentence_type == 'GLL':
+        try:
             data = [sen.timestamp, sen.lat, sen.lon, getattr(sen, 'altitude', None)]
             self.log(data)
             return data
-        else:
+        except AttributeError:
             return None
