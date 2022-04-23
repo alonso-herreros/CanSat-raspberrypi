@@ -1,3 +1,4 @@
+import pynmea2
 from serial import Serial
 from time import sleep
 
@@ -7,13 +8,9 @@ class ArduinoReader:
 
 
 if __name__ == '__main__':
-    with Serial('/dev/ttyACM1') as arduino, open('test.txt', 'w') as fp:
-    
-        lines = []
-        for _ in range(10):
-            if arduino.in_waiting:
-                lines.append(arduino.readline().decode().rstrip('\n\r') + '\n')
-                print(len(lines))
-            sleep(0.2)
-        
-        fp.writelines(lines)
+    with Serial('COM4', 115200) as arduino:
+        while True:
+            line = arduino.readline().decode().rstrip('\r\n')
+            if line.startswith('$'):
+                msg = pynmea2.parse(line, check=False)
+                print(msg.data)
