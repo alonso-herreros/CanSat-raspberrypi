@@ -67,7 +67,7 @@ class ArduinoReader:
         if not self._ser:
             raise AttributeError('Serial is not set. Maybe it failed to open.')
 
-        line = self._ser.readline().decode()
+        line = self._ser.readline().decode().rstrip('\r\n')
         if not line.startswith('$'): return ''
         sen = pynmea2.parse(line)
 
@@ -76,6 +76,8 @@ class ArduinoReader:
                 self._atmos_logger.log_sentence(sen)
             elif sen.sentence_type == 'GGA':
                 self._gps_logger.log_sentence(sen)
+            elif sen.sentence_type == 'TXT':
+                print(f'<{sen.talker}> {sen.text}')
         return sen
 
 
