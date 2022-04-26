@@ -1,11 +1,8 @@
 from Interfacing.ArduinoReader import ArduinoReader
-
-
-def main():
-    print(arduino.readline(True))
+from pathlib import Path
 
 
 if __name__ == '__main__':
-    with ArduinoReader() as arduino:
+    with ArduinoReader(Path('dev/ttyACM0')) as arduino:
         while True:
-            main()
+            print(arduino.readline(True))
