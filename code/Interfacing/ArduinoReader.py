@@ -8,7 +8,7 @@ from Logging.AtmosLogger import AtmosLogger
 
 
 class ArduinoReader:
-    DEF_PORTS = {'win32': 'COM4', 'linux': '/dev/ttyACM1'}
+    DEF_PORTS = {'win32': 'COM4', 'linux': '/dev/ttyACM0'}
     DEF_BAUD = 115200
     DEF_TIMEOUT = 1.2
 
@@ -38,6 +38,9 @@ class ArduinoReader:
     @property
     def port(self):
         return self._ser.port if self._ser else None
+    @property
+    def baud(self):
+        return self._ser.baudrate if self._ser else None
 
     @property
     def ser_satus(self):
