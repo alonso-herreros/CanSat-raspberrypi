@@ -56,17 +56,9 @@ class ArduinoReader:
 
         if self._dir:
             self._loggers = {
-                k: DataLogger(self._dir / v['file'], v['fields'], v.get('filter'))
-                for k, v in ArduinoReader.LOGS.items()
+                k: DataLogger(self._dir / log['file'], log['fields'], log.get('filter'))
+                for k, log in ArduinoReader.LOGS.items()
             }
-
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        self.close()
-
 
     @property
     def port(self):
@@ -84,30 +76,37 @@ class ArduinoReader:
         return self._dir if self._dir else None
     @property
     def log_files(self):
-        return {k: self._dir / l.file for k, l in self._loggers.items()}
+        return {k: self._dir / logger.file for k, logger in self._loggers.items()}
 
     @property
     def has_loggers(self):
         return True if [i for i in self._loggers if i] else False
 
 
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.close()
+
     def close(self):
         if self._ser: self._ser.close()
 
 
     def readline(self, log=True):
-        if not self._ser:
-            raise AttributeError('Serial is not set. Maybe it failed to open.')
-
-        line = self._ser.readline()
         try:
-            line = line.decode('ascii')
+            line = self._ser.readline()
+        except serialutil.SerialException:
+            return 'ERROR: Serial is not open.'
+
+        try:
+            line = line.decode()
         except UnicodeDecodeError:
             return f"ERROR: Can't decode '{line}'"
 
-        if not line.startswith('$'):
-            return None
-        line = line.rstrip('\r\n')
+        if not line: return '' # Empty line
+        line = line.rstrip('\r\n') # Remove these - they may confuse the parser
+
         try:
             sen = pynmea2.parse(line, check=False)
         except pynmea2.nmea.ParseError:
@@ -116,6 +115,5 @@ class ArduinoReader:
         if log and self.has_loggers:
             for logger in self._loggers.values():
                 logger.log(sen)
+
         return sen
-
-
