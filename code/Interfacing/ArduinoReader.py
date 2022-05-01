@@ -23,21 +23,21 @@ class ArduinoReader:
             'fields': dict(zip(
                 ['timestamp', 'lat', 'lon', 'altitude'],
                 ['Time', 'Latitude', 'Longitude', 'Altitude'])),
-            'filter': lambda x: x if x.sentence_type == 'GGA' else None,
+            'filter': lambda x: x if getattr(x, 'sentence_type', None) == 'GGA' else None,
         },
         'atmos': {
             'file': 'atmos.csv',
             'fields': dict(zip(
                 ['$time', 'b_pressure_bar', 'air_temp', 'rel_humidity'],
                 ['Time', 'Pressure (Bar)', 'Temperature (C)', 'Humidity (%)'])),
-            'filter': lambda x: x if x.sentence_type == 'MDA' else None,
+            'filter': lambda x: x if getattr(x, 'sentence_type', None) == 'MDA' else None,
         },
         'txt': {
             'file': 'txt.csv',
             'fields': dict(zip(
                 ['$time', 'text'],
                 ['Time', 'Message'])),
-            'filter': lambda x: x if x.sentence_type == 'TXT' else None,
+            'filter': lambda x: x if getattr(x, 'sentence_type', None) == 'TXT' else None,
         },
     }
 
@@ -103,7 +103,7 @@ class ArduinoReader:
         try:
             line = line.decode('ascii')
         except UnicodeDecodeError:
-            return 'ERROR: Can\'t decode'
+            return f"ERROR: Can't decode '{line}'"
 
         if not line.startswith('$'):
             return None
@@ -111,7 +111,7 @@ class ArduinoReader:
         try:
             sen = pynmea2.parse(line, check=False)
         except pynmea2.nmea.ParseError:
-            return 'ERROR: Can\'t parse'
+            return f"ERROR: Can't parse '{line}'"
 
         if log and self.has_loggers:
             for logger in self._loggers.values():
