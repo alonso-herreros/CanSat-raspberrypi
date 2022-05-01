@@ -5,7 +5,7 @@ import pytest
 
 
 PORTS = {'win32': 'COM4', 'linux': '/dev/ttyACM1'}
-BAUD = 115200
+BAUD = 19200
 TIMEOUT = 1.2
 EXPECTED_SENTENCES = ['TXT', 'GGA', 'GLL', 'MDA']
 
@@ -36,26 +36,26 @@ def test_init(tmp_path):
 
 
 def test_readline(arduino):
-    lines = [arduino.readline(False) for _ in range(3)]
+    lines = [arduino.readline(False) for _ in range(10)]
     assert len([line for line in lines if line]), 'No line read' #Count non-empty lines
 
 
 def test_readline_mda(arduino):
-    lines = [arduino.readline(False) for _ in range(3)]
-    mda_lines = [sen for sen in lines if sen and sen.sentence_type == 'MDA']
-    assert len(lines) == 3, f'Expected 5 lines of data, got {len(lines)}'
+    lines = [arduino.readline(False) for _ in range(10)]
+    mda_lines = [sen for sen in lines if sen and getattr(sen, 'sentence_type', None) == 'MDA']
+    assert len(lines) == 10, f'Expected 5 lines of data, got {len(lines)}'
     assert len(mda_lines) > 0, 'No MDA sentences found'
 
 
 def test_readline_logging(arduino):
-    lines = [arduino.readline(True) for _ in range(5)]
+    lines = [arduino.readline(True) for _ in range(15)]
     mda_lines = [sen for sen in lines if (sen and sen.sentence_type == 'MDA')]
     gps_lines = [sen for sen in lines if (sen and (sen.sentence_type == 'GGA' or sen.sentence_type == 'GLL'))]
 
-    assert len(lines) == 5, f'Expected 5 lines of data, got {len(lines)}'
+    assert len(lines) == 15, f'Expected 5 lines of data, got {len(lines)}'
     assert len(mda_lines) + len(gps_lines) > 0, 'No MDA, GGA or GLL sentences found at all'
     
-    with arduino.log_file_atmos.open('r') as file:
+    with arduino.log_files['atmos'].open('r') as file:
         reader = csv.reader(file, delimiter=',')
         _, *rows = [i for i in reader]
         assert len(rows) == len(mda_lines), 'Not all data lines were logged'
@@ -66,7 +66,7 @@ def test_readline_logging(arduino):
             assert str(sen.air_temp or '') == row[2], 'Temperature not logged'
             assert str(sen.rel_humidity or '') == row[3], 'Humidity not logged'
 
-    with arduino.log_file_gps.open('r') as file:
+    with arduino.log_files['gps'].open('r') as file:
         reader = csv.reader(file, delimiter=',')
         _, *rows = [i for i in reader]
         assert len(rows) == len(gps_lines), 'Not all data lines were logged'
