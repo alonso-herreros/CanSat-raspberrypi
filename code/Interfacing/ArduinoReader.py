@@ -9,56 +9,32 @@ class ArduinoReader:
     DEF_PORTS = {'win32': 'COM4', 'linux': '/dev/ttyACM0'}
     DEF_BAUD = 9600
     DEF_TIMEOUT = 1.2
-
-    LOGS = {
+    DEF_LOGS = {
         'dump': {
-            'file': 'dump.csv',
+            'file': Path() / 'logs' / 'dump.csv',
             'fields': dict(zip(
                 ['$time', 'message'],
                 ['Time', 'Message'])),
-            'filter': lambda x: [None, str(x)] if x else None,
-        },
-        'gps': {
-            'file': 'gps.csv',
-            'fields': dict(zip(
-                ['timestamp', 'lat', 'lon', 'altitude'],
-                ['Time', 'Latitude', 'Longitude', 'Altitude'])),
-            'filter': lambda x: x if getattr(x, 'sentence_type', None) == 'GGA' else None,
-        },
-        'atmos': {
-            'file': 'atmos.csv',
-            'fields': dict(zip(
-                ['$time', 'b_pressure_bar', 'air_temp', 'rel_humidity'],
-                ['Time', 'Pressure (Bar)', 'Temperature (C)', 'Humidity (%)'])),
-            'filter': lambda x: x if getattr(x, 'sentence_type', None) == 'MDA' else None,
-        },
-        'txt': {
-            'file': 'txt.csv',
-            'fields': dict(zip(
-                ['$time', 'text'],
-                ['Time', 'Message'])),
-            'filter': lambda x: x if getattr(x, 'sentence_type', None) == 'TXT' else None,
-        },
+            'filter': lambda x: [None, str(x)] if x else None
+        }
     }
 
     
-    def __init__(self, dir=True, port=None, baud=None, timeout=None):
+    def __init__(self, port=None, baud=None, timeout=None, loggers=None):
         try:
             self._ser = Serial(
                 port=port or ArduinoReader.DEF_PORTS[sys.platform],
                 baudrate=baud or ArduinoReader.DEF_BAUD,
-                timeout=1.2
+                timeout=timeout or ArduinoReader.DEF_TIMEOUT
             )
         except serialutil.SerialException:
             self._ser = None
 
-        self._dir = Path() / 'arduino_log' if dir == True else dir
-
-        if self._dir:
-            self._loggers = {
-                k: DataLogger(self._dir / log['file'], log['fields'], log.get('filter'))
-                for k, log in ArduinoReader.LOGS.items()
-            }
+        loggers = loggers or ArduinoReader.DEF_LOGS if loggers is not False else {}
+        if loggers and not hasattr([*loggers.values()][0], 'log'):
+            self.loggers = {name: DataLogger(**params) for name, params in loggers.items()}
+        else:
+            self.loggers = loggers
 
     @property
     def port(self):
@@ -73,14 +49,14 @@ class ArduinoReader:
 
     @property
     def log_dir(self):
-        return self._dir if self._dir else None
+        return self.loggers.values()[0].file.parent if self.has_loggers else None
     @property
     def log_files(self):
-        return {k: self._dir / logger.file for k, logger in self._loggers.items()}
+        return {k: log.file for k, log in self.loggers.items() if log}
 
     @property
     def has_loggers(self):
-        return True if [i for i in self._loggers if i] else False
+        return True if [i for i in self.loggers if i] else False
 
 
     def __enter__(self):
@@ -95,25 +71,21 @@ class ArduinoReader:
 
     def readline(self, log=True):
         try:
-            line = self._ser.readline()
-        except serialutil.SerialException:
-            return 'ERROR: Serial is not open.'
-
-        try:
-            line = line.decode()
-        except UnicodeDecodeError:
-            return f"ERROR: Can't decode '{line}'"
+            line = self._ser.readline().decode()
+        except (serialutil.SerialException, UnicodeDecodeError):
+            # Serial not open or error decoding line. Which one is it? Don't know, don't care
+            return None
 
         line = line.rstrip(' \r\n') # Remove these - they may confuse the parser
-        if not line: return '' # Empty line
+        if not line: return '' # Empty line?
 
         try:
             sen = pynmea2.parse(line, check=False)
-        except pynmea2.nmea.ParseError:
-            return f"ERROR: Can't parse '{line}'"
+        except pynmea2.nmea.ParseError: # Can't parse? Just return the line
+            return line
 
-        if log and self.has_loggers:
-            for logger in self._loggers.values():
+        if log and self.loggers:
+            for logger in self.loggers.values():
                 logger.log(sen)
 
         return sen
