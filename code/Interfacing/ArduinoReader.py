@@ -104,8 +104,8 @@ class ArduinoReader:
         except UnicodeDecodeError:
             return f"ERROR: Can't decode '{line}'"
 
+        line = line.rstrip(' \r\n') # Remove these - they may confuse the parser
         if not line: return '' # Empty line
-        line = line.rstrip('\r\n') # Remove these - they may confuse the parser
 
         try:
             sen = pynmea2.parse(line, check=False)
