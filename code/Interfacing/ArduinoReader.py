@@ -2,7 +2,7 @@ from serial import Serial, serialutil
 from pathlib import Path
 import pynmea2
 import sys
-from DataLogger import DataLogger
+from .DataLogger import DataLogger
 
 
 class ArduinoReader:
