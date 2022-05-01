@@ -1,4 +1,4 @@
-from Logging.DataLogger import DataLogger
+from Interfacing.DataLogger import DataLogger
 from pathlib import Path
 import csv
 import pytest
@@ -6,29 +6,36 @@ import pytest
 
 class SampleLog:
     def __init__(self, *args):
-        match len(args):
-            case 1: self._rows = args[0]
-            case 2: self._rows = args[0] + args[1]
-            case _: self._rows = args
+        self._fields = args[0]
+        self._data = args[1] if len(args) == 2 else args[1:]
+        
         
     @property
-    def headers(self): return self._rows[0]
+    def fields(self): return self._fields
 
     @property
-    def data(self): return self._rows[1:]
+    def data(self): return self._data
+    
+    @property
+    def headers(self): return [*getattr(self.fields, 'values', lambda: self.fields)()]
 
     @property
-    def rows(self): return self._rows
+    def rows(self): return [self.headers, *self._data]
 
 
 SAMPLES = {
     'default': SampleLog(
-        DataLogger.DEF_HEADERS, 
+        DataLogger.DEF_FIELDS, 
         [1.234],
         [5.678],
     ),
     'gps': SampleLog(
         ['Time', 'Latitude', 'Longitude', 'Altitude'],
+        ['2019-01-01 00:00:00', 1.234, 5.678, 912],
+        ['2019-01-01 00:00:30', 2.345, 6.789, 123],
+    ),
+    'gps_nmea': SampleLog(
+        {'timestamp':'Time', 'lat':'Latitude', 'lon':'Longitude', 'altitude':'Altitude'},
         ['2019-01-01 00:00:00', 1.234, 5.678, 912],
         ['2019-01-01 00:00:30', 2.345, 6.789, 123],
     ),
@@ -45,8 +52,6 @@ SAMPLES = {
     ),
 }
 
-TYPES = SAMPLES.keys()
-
 FILE_CASES = {
     'simple': ['tmp.csv', 0],
     'single': ['a', 1],
@@ -59,14 +64,15 @@ FILE_CASES = {
 @pytest.fixture(params=['default'])
 def sample(request):
     return SAMPLES[request.param]
-
 @pytest.fixture
-def headers(sample, request):
-    return SAMPLES[request.param].headers if hasattr(request, 'param') else sample.headers
-
+def fields(sample):
+    return sample.fields
 @pytest.fixture
-def data(sample, request):
-    return SAMPLES[request.param].data if hasattr(request, 'param') else sample.data
+def data(sample):
+    return sample.data
+@pytest.fixture
+def headers(sample):
+    return sample.headers
 
 @pytest.fixture(params=['simple'])
 def tmp_file(tmp_path, request):
@@ -87,19 +93,20 @@ def tmp_file(tmp_path, request):
     tmp_file.unlink() # Delete the file after use
 
 @pytest.fixture
-def logger(tmp_file, headers):
-    return DataLogger(tmp_file, headers)
+def logger(tmp_file, fields):
+    return DataLogger(tmp_file, fields)
 
 
-def test_init(tmp_file, headers):
+@pytest.mark.parametrize('sample', SAMPLES.keys(), indirect=True)
+def test_init(tmp_file, fields, headers):
     """ Test that the logger is initialized with the right properties"""
-    logger = DataLogger(tmp_file)
+    logger = DataLogger(tmp_file, fields)
     assert logger, 'Logger not initialized'
-    assert logger.headers == headers
-    assert logger.columns == len(headers)
+    assert logger.headers == [*getattr(fields, 'values', lambda: fields)()]
+    assert logger.fields == [*getattr(fields, 'keys', lambda: [i.lower() for i in fields])()]
 
 
-@pytest.mark.parametrize("tmp_file", FILE_CASES.keys(), indirect=True)
+@pytest.mark.parametrize('tmp_file', FILE_CASES.keys(), indirect=True)
 def test_file_creation(tmp_file):
     """ Test that the file is set up correctly """
     logger = DataLogger(tmp_file)
@@ -107,7 +114,7 @@ def test_file_creation(tmp_file):
     assert logger.file.is_file(), 'File not created'
 
 
-@pytest.mark.parametrize("sample", TYPES, indirect=True)
+@pytest.mark.parametrize('sample', SAMPLES.keys(), indirect=True)
 def test_write_headers(logger, headers):
     """ Test that the headers are written correctly """
     with logger.file.open('r') as file:
@@ -115,7 +122,7 @@ def test_write_headers(logger, headers):
         assert next(reader) == headers, 'Headers not written correctly'
 
 
-@pytest.mark.parametrize("sample", TYPES, indirect=True)
+@pytest.mark.parametrize('sample', SAMPLES.keys(), indirect=True)
 def test_log_data(logger, sample):
     """" Test that data can be logged """
     for entry in sample.data: logger.log(entry)

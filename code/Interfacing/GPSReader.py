@@ -1,3 +1,5 @@
+# Currently broken
+
 from serial import Serial, serialutil
 from Logging.GPSLogger import GPSLogger
 import pynmea2
