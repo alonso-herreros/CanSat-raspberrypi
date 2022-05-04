@@ -14,13 +14,13 @@ except ImportError:
 # Initialise the BMP280
 bus = SMBus(1)
 bmp280 = BMP280(i2c_dev=bus)
-temperature = bmp280.get_temperature()
-pressure = bmp280.get_pressure()
+
 
     
 while True: 
     for i, filename in enumerate(camera.capture_continuous("/home/cansat/timelapse/image{counter:02d}.jpg")):
-  
+        temperature = bmp280.get_temperature()
+        pressure = bmp280.get_pressure()
         if pressure is not None and temperature is not None:
             file = open("data.csv","a")
             file.write("{0:0.2f}".format(temperature)+","+"{0:0.2f}".format(pressure)+"\n")
