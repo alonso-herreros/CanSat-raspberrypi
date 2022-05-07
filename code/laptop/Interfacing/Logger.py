@@ -6,7 +6,7 @@ import csv
 class Logger:
     DEF_FIELDS = ['Data']
 
-    def __init__(self, file, fields=[], filter=None):
+    def __init__(self, file, fields=[], filter=None, append=False):
         self._file = Path(file).resolve()
         self.filter = filter or (lambda x: x)
 
@@ -15,9 +15,17 @@ class Logger:
 
         self._file.parent.mkdir(parents=True, exist_ok=True)
         self._file.touch()
-        with self._file.open('w', newline='') as file:
-            writer = csv.writer(file, delimiter=',')
-            writer.writerow(self.headers)
+        if not append:
+            with self._file.open('w', newline='') as file:
+                writer = csv.writer(file, delimiter=',')
+                writer.writerow(self.headers)
+        else:
+            with self._file.open('r') as file:
+                reader = csv.reader(file, delimiter=',')
+                headers = next(reader)
+                for field in self._fields:
+                    assert field in headers, f'Field {field} is not in the file'
+            
 
 
     @property
@@ -48,9 +56,9 @@ class Logger:
                 # Most common case, entry is just a list
                 if isinstance(entry, (list, tuple)):
                     row = entry
-                # If it's a dict, use the field names if possible or use the given order
+                # If it's a dict, use the field names if possible
                 elif hasattr(entry, 'keys'):
-                    row = [entry.get(k) for k in self.fields] or entry.values()
+                    row = [entry.get(k) for k in self.fields]
                 # If it's an nmea sentence, use the field names if possible or log nothing
                 elif hasattr(entry, 'sentence_type'):
                     row = [getattr(entry, k, None) for k in self.fields]
@@ -61,10 +69,10 @@ class Logger:
                 else:
                     row = entry
 
-                if (i for i in row if i): # Check if there is valid data in the list
+                if [i for i in row if i]: # Check if there is valid data in the list
                     # If there is $time in fields and there is no data in row for it, add the current time
                     if "$time" in self.fields and not row[self.fields.index("$time")]:
-                        row[self.fields.index("$time")] = str(datetime.now())
+                        row[self.fields.index("$time")] = str(datetime.now()).split('.')[0]
 
                     if len(row) != len(self.fields):
                         raise ValueError('Data length does not match column count')
