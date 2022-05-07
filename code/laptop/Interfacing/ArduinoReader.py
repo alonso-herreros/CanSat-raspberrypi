@@ -2,7 +2,7 @@ from serial import Serial, serialutil
 from pathlib import Path
 import pynmea2
 import sys
-from .DataLogger import DataLogger
+from .Logger import Logger
 
 
 class ArduinoReader:
@@ -32,7 +32,7 @@ class ArduinoReader:
 
         loggers = loggers or ArduinoReader.DEF_LOGS if loggers is not False else {}
         if loggers and not hasattr([*loggers.values()][0], 'log'):
-            self.loggers = {name: DataLogger(**params) for name, params in loggers.items()}
+            self.loggers = {name: Logger(**params) for name, params in loggers.items()}
         else:
             self.loggers = loggers
 

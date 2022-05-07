@@ -3,14 +3,14 @@ from datetime import datetime
 import csv
 
 
-class DataLogger:
+class Logger:
     DEF_FIELDS = ['Data']
 
     def __init__(self, file, fields=[], filter=None):
         self._file = Path(file).resolve()
         self.filter = filter or (lambda x: x)
 
-        fields = fields or DataLogger.DEF_FIELDS
+        fields = fields or Logger.DEF_FIELDS
         self._fields = fields if hasattr(fields, 'values') else {i.lower().replace(' ', '_'): i for i in fields}
 
         self._file.parent.mkdir(parents=True, exist_ok=True)
