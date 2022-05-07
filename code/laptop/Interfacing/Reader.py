@@ -1,14 +1,15 @@
-from serial import Serial, serialutil
 from pathlib import Path
+<<<<<<< Updated upstream
 import pynmea2
 import sys
 from .Logger import Logger
+=======
+from .Logger import Logger
+from serial import serialutil
+>>>>>>> Stashed changes
 
 
 class Reader:
-    DEF_PORTS = {'win32': 'COM4', 'linux': '/dev/ttyACM0'}
-    DEF_BAUD = 9600
-    DEF_TIMEOUT = 1.2
     DEF_LOGS = {
         'dump': {
             'file': Path() / 'logs' / 'dump.csv',
@@ -20,43 +21,26 @@ class Reader:
     }
 
     
-    def __init__(self, source=None, port=None, baud=None, timeout=None, loggers=None):
-        try:
-            self._source = source or Serial(
-                port=port or ArduinoReader.DEF_PORTS[sys.platform],
-                baudrate=baud or ArduinoReader.DEF_BAUD,
-                timeout=timeout or ArduinoReader.DEF_TIMEOUT
-            )
-        except serialutil.SerialException:
-            self._source = None
+    def __init__(self, source, loggers=None, filter=None):
+        self._source = source
+        self._filter = filter or (lambda x: x if x else None)
 
-        loggers = loggers or ArduinoReader.DEF_LOGS if loggers is not False else {}
+        loggers = loggers or Reader.DEF_LOGS if loggers is not False else {}
         if loggers and not hasattr([*loggers.values()][0], 'log'):
             self.loggers = {name: Logger(**params) for name, params in loggers.items()}
         else:
             self.loggers = loggers
 
     @property
-    def port(self):
-        return self._source.port if self._source else None
-    @property
-    def baud(self):
-        return self._source.baudrate if self._source else None
-
-    @property
-    def ser_satus(self):
-        return (True if self._source.is_open else False) if self._source else None
-
-    @property
-    def log_dir(self):
-        return self.loggers.values()[0].file.parent if self.has_loggers else None
-    @property
-    def log_files(self):
-        return {k: log.file for k, log in self.loggers.items() if log}
+    def source(self):
+        return self._source
 
     @property
     def has_loggers(self):
         return True if [i for i in self.loggers if i] else False
+    @property
+    def log_files(self):
+        return {k: log.file for k, log in self.loggers.items() if log}
 
 
     def __enter__(self):
@@ -66,26 +50,31 @@ class Reader:
         self.close()
 
     def close(self):
-        if self._source: self._source.close()
+        getattr(self._source, 'close', lambda: None)()
+
+
+    def filter(self, line):
+        return getattr(self, '_filter', lambda x: x)(line)
 
 
     def readline(self, log=True):
         try:
-            line = self._source.readline().decode()
-        except (serialutil.SerialException, UnicodeDecodeError):
-            # Serial not open or error decoding line. Which one is it? Don't know, don't care
+            line = self._source.readline()
+            line = getattr(line, 'decode', lambda: line)()
+            line = line.rstrip(' \r\n') # Remove these - they may confuse the parser
+            line = self.filter(line)
+            assert line
+        except serialutil.SerialException:
+            try:
+                self._source.close()
+                self._source.open()
+            finally:
+                return None
+        except (AttributeError, AssertionError):
             return None
-
-        line = line.rstrip(' \r\n') # Remove these - they may confuse the parser
-        if not line: return '' # Empty line?
-
-        try:
-            sen = pynmea2.parse(line, check=False)
-        except pynmea2.nmea.ParseError: # Can't parse? Just return the line
-            return line
 
         if log and self.loggers:
             for logger in self.loggers.values():
-                logger.log(sen)
+                logger.log(line)
 
-        return sen
+        return line
